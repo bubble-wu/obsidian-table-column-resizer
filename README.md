@@ -18,14 +18,17 @@ An Obsidian plugin that allows you to resize table columns by dragging, making y
 
 ### Before - Default Table (Plugin Disabled)
 ![Default Table](./screenshots/before-plugin.svg)
+
 *Standard markdown table with default column widths*
 
 ### During - Hover Effect (Plugin Enabled)
 ![Hover Effect](./screenshots/hover-effect.svg)
+
 *Blue resize handle appears when hovering over column borders*
 
 ### After - Customized Widths (After Resizing)
 ![Customized Widths](./screenshots/after-resizing.svg)
+
 *Table columns resized to custom widths - notice how "Name" column is wider*
 
 ## 🚀 Installation
