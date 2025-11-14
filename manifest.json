@@ -3,7 +3,7 @@
 	"name": "Table Column Resizer",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "通过拖拽调整Obsidian表格列宽",
+	"description": "Drag to resize table columns in preview mode.",
 	"author": "bubble",
 	"authorUrl": "https://github.com/bubble-wu",
 	"isDesktopOnly": false
