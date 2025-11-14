@@ -1,0 +1,194 @@
+/* 表格列宽调整器样式 - 编辑模式专用 */
+
+/* 编辑模式下的特殊样式 */
+.cm-table-widget {
+    position: relative !important;
+}
+
+.cm-table-widget table {
+    position: relative !important;
+    border-collapse: collapse !important;
+}
+
+.cm-table-widget table th,
+.cm-table-widget table td {
+    position: relative !important;
+    overflow: hidden !important;
+    border: 1px solid var(--background-modifier-border) !important;
+    padding: 6px 8px !important;
+    transition: width 0.1s ease-out !important;
+}
+
+/* 编辑模式下的拖拽手柄 */
+.edit-mode-resizer {
+    position: absolute !important;
+    right: -2px !important;
+    top: 0 !important;
+    width: 6px !important;
+    height: 100% !important;
+    cursor: col-resize !important;
+    z-index: 100 !important;
+    opacity: 0 !important;
+    transition: all 0.2s ease !important;
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        transparent 30%, 
+        var(--interactive-accent) 50%, 
+        transparent 70%, 
+        transparent 100%
+    ) !important;
+    border-radius: 2px !important;
+}
+
+/* 编辑模式下的悬停效果 */
+.cm-table-widget table th:hover .edit-mode-resizer,
+.cm-table-widget table td:hover .edit-mode-resizer {
+    opacity: 0.8 !important;
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        transparent 20%, 
+        var(--interactive-accent-hover) 50%, 
+        transparent 80%, 
+        transparent 100%
+    ) !important;
+    transform: scaleX(1.2) !important;
+}
+
+/* 编辑模式拖拽时的效果 */
+.cm-table-widget table th:active .edit-mode-resizer,
+.cm-table-widget table td:active .edit-mode-resizer,
+.edit-mode-resizer:active {
+    opacity: 1 !important;
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        transparent 10%, 
+        var(--interactive-accent) 50%, 
+        transparent 90%, 
+        transparent 100%
+    ) !important;
+    transform: scaleX(1.5) !important;
+}
+
+/* 编辑模式拖拽时的表格样式 */
+table[data-edit-resizing] {
+    box-shadow: 0 0 0 2px var(--interactive-accent) !important;
+    border-radius: 4px !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+table[data-edit-resizing] th,
+table[data-edit-resizing] td {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    transition: width 0.1s ease-out !important;
+}
+
+/* 编辑模式全局拖拽样式 */
+body.table-edit-resizing {
+    cursor: col-resize !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+body.table-edit-resizing * {
+    cursor: col-resize !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+
+/* 防止与CodeMirror冲突的特殊处理 */
+.cm-editor.table-resizing-active {
+    pointer-events: none !important;
+}
+
+.cm-editor.table-resizing-active * {
+    pointer-events: none !important;
+}
+
+/* CodeMirror表格中的特殊样式 */
+.cm-table-widget .table-column-resizer {
+    right: -1px !important;
+    width: 5px !important;
+    height: calc(100% - 2px) !important;
+    top: 1px !important;
+}
+
+/* 暗色主题下的编辑模式 */
+.theme-dark .edit-mode-resizer {
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        transparent 30%, 
+        var(--interactive-accent) 50%, 
+        transparent 70%, 
+        transparent 100%
+    ) !important;
+}
+
+.theme-dark .edit-mode-resizer:hover {
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        transparent 20%, 
+        var(--interactive-accent-hover) 50%, 
+        transparent 80%, 
+        transparent 100%
+    ) !important;
+}
+
+/* 亮色主题下的编辑模式 */
+.theme-light .edit-mode-resizer {
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        transparent 30%, 
+        var(--interactive-accent) 50%, 
+        transparent 70%, 
+        transparent 100%
+    ) !important;
+}
+
+/* 编辑模式下的列高亮效果 */
+table[data-edit-resizing] th:nth-child(n),
+table[data-edit-resizing] td:nth-child(n) {
+    position: relative !important;
+}
+
+table[data-edit-resizing] th:nth-child(n)::after,
+table[data-edit-resizing] td:nth-child(n)::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: var(--interactive-accent) !important;
+    opacity: 0.05 !important;
+    pointer-events: none !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .edit-mode-resizer {
+        width: 10px !important;
+        right: -3px !important;
+    }
+    
+    .edit-mode-resizer:hover {
+        transform: scaleX(1.3) !important;
+    }
+}

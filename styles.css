@@ -1,0 +1,140 @@
+/* ================= 基础样式 ================= */
+
+/* 拖拽手柄基础样式 */
+.table-column-resizer {
+    position: absolute !important;
+    right: -3px !important;
+    top: 0 !important;
+    width: 6px !important;
+    height: 100% !important;
+    cursor: col-resize !important;
+    z-index: 10 !important;
+    opacity: 0 !important;
+    transition: opacity 0.2s ease !important;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--interactive-accent) 20%,
+        var(--interactive-accent) 80%,
+        transparent 100%
+    ) !important;
+}
+
+/* 鼠标悬停时显示拖拽手柄 */
+table th:hover .table-column-resizer,
+table td:hover .table-column-resizer {
+    opacity: 0.6 !important;
+}
+
+/* 拖拽手柄悬停效果 */
+.table-column-resizer:hover {
+    opacity: 1 !important;
+    transform: scaleX(1.5) !important;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--interactive-accent-hover) 10%,
+        var(--interactive-accent-hover) 90%,
+        transparent 100%
+    ) !important;
+}
+
+/* 拖拽时的样式 */
+table[data-resizing="true"] {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+.table-column-resizer:active,
+.table-column-resizer.dragging {
+    opacity: 1 !important;
+    transform: scaleX(2) !important;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--interactive-accent-hover) 10%,
+        var(--interactive-accent-hover) 90%,
+        transparent 100%
+    ) !important;
+}
+
+/* 拖拽时表格高亮 */
+body.table-resizing {
+    cursor: col-resize !important;
+}
+
+body.table-resizing table {
+    border-color: var(--interactive-accent) !important;
+}
+
+/* 调整表格样式 */
+table {
+    position: relative !important;
+    border-collapse: collapse !important;
+    overflow: visible !important;
+}
+
+table th,
+table td {
+    position: relative !important;
+    overflow: hidden !important;
+    border: 1px solid var(--background-modifier-border) !important;
+    padding: 8px 12px !important;
+    transition: all 0.1s ease-out !important;
+    min-width: 50px !important; /* 最小宽度 */
+    max-width: 500px !important; /* 最大宽度 */
+}
+
+/* 表头特殊样式 */
+table th {
+    background-color: var(--background-secondary) !important;
+    font-weight: 600 !important;
+    position: relative !important;
+}
+
+/* 鼠标悬停时的高亮效果 */
+table th:hover,
+table td:hover {
+    background-color: var(--background-modifier-hover) !important;
+}
+
+/* 拖拽手柄在表头中的位置调整 */
+table th .table-column-resizer {
+    right: -2px !important;
+    top: 0 !important;
+    height: 100% !important;
+}
+
+/* 拖拽时列的高亮效果 */
+table[data-resizing="true"] th,
+table[data-resizing="true"] td {
+    border-color: var(--interactive-accent) !important;
+    background-color: var(--background-modifier-form-field) !important;
+}
+
+/* 确保拖拽手柄在正确的层级 */
+.table-column-resizer {
+    z-index: 100 !important;
+    pointer-events: auto !important;
+}
+
+/* 防止拖拽时文本选择 */
+.table-column-resizer {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .table-column-resizer {
+        width: 8px !important;
+        right: -4px !important;
+    }
+    
+    table th,
+    table td {
+        padding: 6px 8px !important;
+    }
+}
