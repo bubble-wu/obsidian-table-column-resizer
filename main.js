@@ -29,16 +29,17 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
+  enabled: true,
   minColumnWidth: 50,
-  maxColumnWidth: 500,
-  defaultColumnWidth: 150,
-  enableInPreviewMode: true
+  maxColumnWidth: 500
 };
 var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
+    this.tableWidths = {};
     this.isResizing = false;
     this.currentTable = null;
+    this.currentSourcePath = "";
     this.currentColumn = -1;
     this.startX = 0;
     this.startWidth = 0;
@@ -46,20 +47,11 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
       if (!this.isResizing || !this.currentTable)
         return;
       const deltaX = e.clientX - this.startX;
-      let newWidth = this.startWidth + deltaX;
-      newWidth = Math.max(
+      const newWidth = Math.max(
         this.settings.minColumnWidth,
-        Math.min(newWidth, this.settings.maxColumnWidth)
+        Math.min(this.startWidth + deltaX, this.settings.maxColumnWidth)
       );
-      const rows = this.currentTable.querySelectorAll("tr");
-      rows.forEach((row) => {
-        const cell = row.children[this.currentColumn];
-        if (cell && cell.style) {
-          cell.style.width = newWidth + "px";
-          cell.style.minWidth = newWidth + "px";
-          cell.style.maxWidth = newWidth + "px";
-        }
-      });
+      this.setColumnWidth(this.currentTable, this.currentColumn, newWidth);
     };
     this.handleMouseUp = () => {
       if (!this.isResizing)
@@ -67,162 +59,163 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
       this.isResizing = false;
       document.removeEventListener("mousemove", this.handleMouseMove);
       document.removeEventListener("mouseup", this.handleMouseUp);
+      document.body.classList.remove("table-resizing");
       if (this.currentTable) {
         this.currentTable.removeAttribute("data-resizing");
-        this.saveTableColumnWidths(this.currentTable);
+        this.saveWidths(this.currentTable, this.currentSourcePath);
       }
-      document.body.classList.remove("table-resizing");
       this.currentTable = null;
+      this.currentSourcePath = "";
       this.currentColumn = -1;
     };
   }
   async onload() {
-    await this.loadSettings();
-    console.log("\u52A0\u8F7D\u8868\u683C\u5217\u5BBD\u8C03\u6574\u63D2\u4EF6 (\u9884\u89C8\u6A21\u5F0F)");
-    if (this.settings.enableInPreviewMode) {
-      this.registerMarkdownPostProcessor((element, context) => {
-        this.processTablesInPreview(element, context);
-      });
-    }
+    var _a, _b, _c;
+    const data = (_a = await this.loadData()) != null ? _a : {};
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, (_b = data.settings) != null ? _b : {});
+    this.tableWidths = (_c = data.tableWidths) != null ? _c : {};
+    this.registerMarkdownPostProcessor((element, context) => {
+      this.processTables(element, context);
+    });
     this.addSettingTab(new TableColumnResizerSettingTab(this.app, this));
   }
-  // 预览模式处理表格
-  processTablesInPreview(element, context) {
-    const tables = element.querySelectorAll("table");
-    tables.forEach((table, index) => {
-      this.makeTableResizable(table, index, context.sourcePath);
+  onunload() {
+    document.removeEventListener("mousemove", this.handleMouseMove);
+    document.removeEventListener("mouseup", this.handleMouseUp);
+    document.body.classList.remove("table-resizing");
+  }
+  processTables(element, context) {
+    if (!this.settings.enabled)
+      return;
+    element.querySelectorAll("table").forEach((table) => {
+      this.makeTableResizable(table, context.sourcePath);
     });
   }
-  // 使表格可调整列宽
-  makeTableResizable(table, tableIndex, filePath) {
+  makeTableResizable(table, sourcePath) {
     if (table.hasAttribute("data-resizable"))
       return;
     table.setAttribute("data-resizable", "true");
-    this.applySavedColumnWidths(table);
-    const headers = table.querySelectorAll("th, td");
-    headers.forEach((header, columnIndex) => {
-      if (columnIndex === headers.length - 1)
+    this.applySavedWidths(table, sourcePath);
+    const headerRow = table.rows[0];
+    if (!headerRow)
+      return;
+    Array.from(headerRow.cells).forEach((cell) => {
+      if (cell.cellIndex === headerRow.cells.length - 1)
         return;
-      const headerEl = header;
-      const resizer = document.createElement("div");
-      resizer.className = "table-column-resizer";
-      resizer.style.cssText = `
-				position: absolute;
-				right: -3px;
-				top: 0;
-				width: 6px;
-				height: 100%;
-				cursor: col-resize;
-				z-index: 10;
-				opacity: 0;
-				transition: opacity 0.2s;
-			`;
-      headerEl.style.position = "relative";
-      headerEl.appendChild(resizer);
-      headerEl.addEventListener("mouseenter", () => {
-        resizer.style.opacity = "1";
-      });
-      headerEl.addEventListener("mouseleave", () => {
-        if (!this.isResizing)
-          resizer.style.opacity = "0";
-      });
-      resizer.addEventListener("mousedown", (e) => {
+      const handle = document.createElement("div");
+      handle.className = "table-column-resizer";
+      cell.appendChild(handle);
+      handle.addEventListener("mousedown", (e) => {
         e.preventDefault();
-        this.startResize(e, table, columnIndex);
+        this.startResize(e, table, cell.cellIndex, sourcePath);
       });
     });
   }
-  startResize(e, table, columnIndex) {
+  applySavedWidths(table, sourcePath) {
+    const widths = this.tableWidths[this.getTableId(table, sourcePath)];
+    if (!widths)
+      return;
+    table.style.tableLayout = "fixed";
+    Object.entries(widths).forEach(([columnIndex, width]) => {
+      this.setColumnWidth(table, parseInt(columnIndex, 10), width);
+    });
+  }
+  startResize(e, table, columnIndex, sourcePath) {
+    var _a;
     this.isResizing = true;
     this.currentTable = table;
+    this.currentSourcePath = sourcePath;
     this.currentColumn = columnIndex;
     this.startX = e.clientX;
-    const rows = table.querySelectorAll("tr");
-    const firstCell = rows[0].children[columnIndex];
-    this.startWidth = firstCell.offsetWidth;
+    const headerCell = (_a = table.rows[0]) == null ? void 0 : _a.cells[columnIndex];
+    this.startWidth = headerCell ? headerCell.getBoundingClientRect().width : this.settings.minColumnWidth;
+    table.style.tableLayout = "fixed";
     table.setAttribute("data-resizing", "true");
     document.body.classList.add("table-resizing");
     document.addEventListener("mousemove", this.handleMouseMove);
     document.addEventListener("mouseup", this.handleMouseUp);
   }
-  // 保存表格列宽设置
-  saveTableColumnWidths(table) {
-    const tableId = this.getTableId(table);
-    const rows = table.querySelectorAll("tr");
-    if (rows.length === 0)
-      return;
-    const columnWidths = {};
-    const firstRow = rows[0];
-    for (let i = 0; i < firstRow.children.length; i++) {
-      const cell = firstRow.children[i];
-      if (cell.style.width) {
-        columnWidths[i] = parseInt(cell.style.width);
+  setColumnWidth(table, columnIndex, width) {
+    Array.from(table.rows).forEach((row) => {
+      const cell = row.cells[columnIndex];
+      if (cell) {
+        cell.style.width = `${width}px`;
+        cell.style.minWidth = `${width}px`;
+        cell.style.maxWidth = `${width}px`;
       }
-    }
-    const savedData = this.loadDataSync();
-    savedData[tableId] = columnWidths;
-    this.saveData(savedData);
-  }
-  // 恢复保存的列宽设置
-  applySavedColumnWidths(table) {
-    const tableId = this.getTableId(table);
-    const savedData = this.loadDataSync();
-    const columnWidths = savedData[tableId];
-    if (!columnWidths)
-      return;
-    Object.entries(columnWidths).forEach(([columnIndex, width]) => {
-      const rows = table.querySelectorAll("tr");
-      rows.forEach((row) => {
-        const cell = row.children[parseInt(columnIndex)];
-        if (cell && cell.style) {
-          cell.style.width = width + "px";
-          cell.style.minWidth = width + "px";
-          cell.style.maxWidth = width + "px";
-        }
-      });
     });
   }
-  // 生成表格唯一ID
-  getTableId(table) {
-    const content = table.textContent || "";
-    const truncatedContent = content.substring(0, 50).replace(/\s/g, "");
-    const parent = table.parentElement;
-    const index = parent ? Array.from(parent.children).indexOf(table) : 0;
-    return `table_${truncatedContent}_${index}`;
+  saveWidths(table, sourcePath) {
+    const tableId = this.getTableId(table, sourcePath);
+    const headerRow = table.rows[0];
+    if (!headerRow)
+      return;
+    const widths = {};
+    Array.from(headerRow.cells).forEach((cell) => {
+      if (cell.style.width) {
+        widths[cell.cellIndex] = parseFloat(cell.style.width);
+      }
+    });
+    if (Object.keys(widths).length === 0) {
+      delete this.tableWidths[tableId];
+    } else {
+      this.tableWidths[tableId] = widths;
+    }
+    this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
   }
-  loadDataSync() {
-    return this.loadData() || {};
-  }
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  /**
+   * Stable id: source path + hash of the table's text content.
+   * Widths survive restarts and edits elsewhere in the note; they reset
+   * when the table's own content changes.
+   */
+  getTableId(table, sourcePath) {
+    var _a;
+    const content = (_a = table.textContent) != null ? _a : "";
+    let hash = 5381;
+    for (let i = 0; i < content.length; i++) {
+      hash = (hash << 5) + hash + content.charCodeAt(i) >>> 0;
+    }
+    return `${sourcePath}::${hash.toString(36)}`;
   }
   async saveSettings() {
-    await this.saveData(this.settings);
-  }
-  onunload() {
-    console.log("\u5378\u8F7D\u8868\u683C\u5217\u5BBD\u8C03\u6574\u63D2\u4EF6");
+    await this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
   }
 };
 var TableColumnResizerSettingTab = class extends import_obsidian.PluginSettingTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-  }
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "\u8868\u683C\u5217\u5BBD\u8C03\u6574\u8BBE\u7F6E" });
-    new import_obsidian.Setting(containerEl).setName("\u6700\u5C0F\u5217\u5BBD").setDesc("\u5217\u7684\u6700\u5C0F\u5BBD\u5EA6\uFF08\u50CF\u7D20\uFF09").addSlider((slider) => slider.setLimits(30, 100, 10).setValue(this.plugin.settings.minColumnWidth).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.minColumnWidth = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian.Setting(containerEl).setName("\u6700\u5927\u5217\u5BBD").setDesc("\u5217\u7684\u6700\u5927\u5BBD\u5EA6\uFF08\u50CF\u7D20\uFF09").addSlider((slider) => slider.setLimits(200, 800, 50).setValue(this.plugin.settings.maxColumnWidth).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.maxColumnWidth = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u5217\u5BBD").setDesc("\u65B0\u8868\u683C\u7684\u9ED8\u8BA4\u5217\u5BBD\uFF08\u50CF\u7D20\uFF09").addSlider((slider) => slider.setLimits(80, 300, 20).setValue(this.plugin.settings.defaultColumnWidth).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.defaultColumnWidth = value;
-      await this.plugin.saveSettings();
-    }));
+    new import_obsidian.Setting(containerEl).setName("Enable column resizing").setDesc("Drag column edges to resize tables in reading view.").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.enabled).onChange(async (value) => {
+        this.plugin.settings.enabled = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Minimum column width").setDesc("Smallest allowed column width, in pixels.").addText(
+      (text) => text.setValue(String(this.plugin.settings.minColumnWidth)).onChange(async (value) => {
+        const parsed = parseInt(value, 10);
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          this.plugin.settings.minColumnWidth = parsed;
+          if (this.plugin.settings.maxColumnWidth < parsed) {
+            this.plugin.settings.maxColumnWidth = parsed;
+          }
+          await this.plugin.saveSettings();
+          this.display();
+        }
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Maximum column width").setDesc("Largest allowed column width, in pixels.").addText(
+      (text) => text.setValue(String(this.plugin.settings.maxColumnWidth)).onChange(async (value) => {
+        const parsed = parseInt(value, 10);
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          this.plugin.settings.maxColumnWidth = parsed;
+          if (this.plugin.settings.minColumnWidth > parsed) {
+            this.plugin.settings.minColumnWidth = parsed;
+          }
+          await this.plugin.saveSettings();
+          this.display();
+        }
+      })
+    );
   }
 };

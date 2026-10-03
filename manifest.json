@@ -1,9 +1,9 @@
 {
 	"id": "table-column-resizer",
 	"name": "Table Column Resizer",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Drag to resize table columns in preview mode."
+	"description": "Drag to resize table columns in reading view.",
 	"author": "bubble",
 	"authorUrl": "https://github.com/bubble-wu",
 	"isDesktopOnly": false

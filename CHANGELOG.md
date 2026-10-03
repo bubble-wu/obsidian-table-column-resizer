@@ -1,28 +1,24 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [1.0.1] - 2026-10-03
 
-## [1.0.0] - 2024-01-15
+### Fixed
+- **Plugin failed to load at all**: manifest.json was invalid JSON (missing comma), so Obsidian silently skipped it (#5)
+- **Column width capped at 500px**: hardcoded CSS `min/max-width !important` overrode the plugin settings; widths now follow the configured maximum (#4)
+- **Persistence was broken**: an async `loadData()` misuse meant widths were never restored, and every drag overwrote the settings file with an empty object — settings and column widths are now stored correctly and separately
+- **Dragging from rows below the header did not work**: handles were attached to every cell with a wrong column index; handles now live on header cells only, with correct indices
+- Plugin styles no longer override borders, padding, backgrounds, or layout of all tables; only the resize handle itself is styled
+- Tables switch to fixed layout while resizing so widths track the mouse precisely
+
+### Changed
+- Settings panel in English, with an enable/disable toggle; min/max width accept any positive value
+- Removed the unused "default column width" setting
+
+## [1.0.0] - 2025-11-15
 
 ### Added
 - Initial release of Table Column Resizer plugin
-- Drag-to-resize functionality for table columns in preview mode
+- Drag-to-resize functionality for table columns in reading view
 - Persistent column width settings
-- Customizable minimum, maximum, and default column widths
+- Customizable minimum and maximum column widths
 - Visual feedback with hover and drag indicators
-- Theme compatibility with all Obsidian themes
-- Settings panel for configuration
-
-### Features
-- ✅ Drag table column borders to resize width
-- ✅ Column widths are saved and restored per table
-- ✅ Works only in preview mode for stability
-- ✅ Smooth animations and visual feedback
-- ✅ Responsive design for mobile devices
-
-### Technical
-- TypeScript implementation
-- ESBuild for fast compilation
-- CSS variables for theme integration
-- Event-driven architecture
-- Minimal performance impact

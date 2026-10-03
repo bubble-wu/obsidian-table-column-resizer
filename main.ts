@@ -1,108 +1,111 @@
-import { Plugin, MarkdownPostProcessorContext, PluginSettingTab, Setting, App } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, PluginSettingTab, Setting } from 'obsidian';
 
 interface PluginSettings {
+	enabled: boolean;
 	minColumnWidth: number;
 	maxColumnWidth: number;
-	defaultColumnWidth: number;
-	enableInPreviewMode: boolean;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
+	enabled: true,
 	minColumnWidth: 50,
 	maxColumnWidth: 500,
-	defaultColumnWidth: 150,
-	enableInPreviewMode: true
 };
+
+/** Saved column widths, keyed by a stable per-table id. */
+interface SavedTableWidths {
+	[tableId: string]: { [columnIndex: number]: number };
+}
+
+interface PluginData {
+	settings?: Partial<PluginSettings>;
+	tableWidths?: SavedTableWidths;
+}
 
 export default class TableColumnResizerPlugin extends Plugin {
 	settings: PluginSettings;
-	isResizing: boolean = false;
-	currentTable: HTMLElement | null = null;
-	currentColumn: number = -1;
-	startX: number = 0;
-	startWidth: number = 0;
+	tableWidths: SavedTableWidths = {};
+
+	private isResizing = false;
+	private currentTable: HTMLTableElement | null = null;
+	private currentSourcePath = '';
+	private currentColumn = -1;
+	private startX = 0;
+	private startWidth = 0;
 
 	async onload() {
-		await this.loadSettings();
-		console.log('加载表格列宽调整插件 (预览模式)');
+		const data: PluginData = (await this.loadData()) ?? {};
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings ?? {});
+		this.tableWidths = data.tableWidths ?? {};
 
-		// 只支持预览模式
-		if (this.settings.enableInPreviewMode) {
-			this.registerMarkdownPostProcessor((element, context) => {
-				this.processTablesInPreview(element, context);
-			});
-		}
+		this.registerMarkdownPostProcessor((element, context) => {
+			this.processTables(element, context);
+		});
 
-		// 添加设置面板
 		this.addSettingTab(new TableColumnResizerSettingTab(this.app, this));
 	}
 
-	// 预览模式处理表格
-	processTablesInPreview(element: HTMLElement, context: MarkdownPostProcessorContext) {
-		const tables = element.querySelectorAll('table');
-		tables.forEach((table, index) => {
-			this.makeTableResizable(table as HTMLElement, index, context.sourcePath);
+	onunload() {
+		// Clean up drag state in case the plugin is disabled mid-drag.
+		document.removeEventListener('mousemove', this.handleMouseMove);
+		document.removeEventListener('mouseup', this.handleMouseUp);
+		document.body.classList.remove('table-resizing');
+	}
+
+	processTables(element: HTMLElement, context: MarkdownPostProcessorContext) {
+		if (!this.settings.enabled) return;
+		element.querySelectorAll('table').forEach((table) => {
+			this.makeTableResizable(table as HTMLTableElement, context.sourcePath);
 		});
 	}
 
-	// 使表格可调整列宽
-	makeTableResizable(table: HTMLElement, tableIndex: number, filePath: string) {
+	makeTableResizable(table: HTMLTableElement, sourcePath: string) {
 		if (table.hasAttribute('data-resizable')) return;
 		table.setAttribute('data-resizable', 'true');
 
-		// 恢复保存的列宽
-		this.applySavedColumnWidths(table);
+		this.applySavedWidths(table, sourcePath);
 
-		const headers = table.querySelectorAll('th, td');
-		headers.forEach((header, columnIndex) => {
-			if (columnIndex === headers.length - 1) return;
+		const headerRow = table.rows[0];
+		if (!headerRow) return;
 
-			const headerEl = header as HTMLElement;
-			const resizer = document.createElement('div');
-			resizer.className = 'table-column-resizer';
-			resizer.style.cssText = `
-				position: absolute;
-				right: -3px;
-				top: 0;
-				width: 6px;
-				height: 100%;
-				cursor: col-resize;
-				z-index: 10;
-				opacity: 0;
-				transition: opacity 0.2s;
-			`;
+		// Attach one handle per header cell (except the last column, whose
+		// right edge is the table edge).
+		Array.from(headerRow.cells).forEach((cell) => {
+			if (cell.cellIndex === headerRow.cells.length - 1) return;
 
-			headerEl.style.position = 'relative';
-			headerEl.appendChild(resizer);
+			const handle = document.createElement('div');
+			handle.className = 'table-column-resizer';
+			cell.appendChild(handle);
 
-			// 鼠标悬停显示拖拽手柄
-			headerEl.addEventListener('mouseenter', () => {
-				resizer.style.opacity = '1';
-			});
-
-			headerEl.addEventListener('mouseleave', () => {
-				if (!this.isResizing) resizer.style.opacity = '0';
-			});
-
-			// 拖拽事件
-			resizer.addEventListener('mousedown', (e) => {
+			handle.addEventListener('mousedown', (e) => {
 				e.preventDefault();
-				this.startResize(e, table, columnIndex);
+				this.startResize(e, table, cell.cellIndex, sourcePath);
 			});
 		});
 	}
 
-	startResize(e: MouseEvent, table: HTMLElement, columnIndex: number) {
+	applySavedWidths(table: HTMLTableElement, sourcePath: string) {
+		const widths = this.tableWidths[this.getTableId(table, sourcePath)];
+		if (!widths) return;
+
+		table.style.tableLayout = 'fixed';
+		Object.entries(widths).forEach(([columnIndex, width]) => {
+			this.setColumnWidth(table, parseInt(columnIndex, 10), width);
+		});
+	}
+
+	startResize(e: MouseEvent, table: HTMLTableElement, columnIndex: number, sourcePath: string) {
 		this.isResizing = true;
 		this.currentTable = table;
+		this.currentSourcePath = sourcePath;
 		this.currentColumn = columnIndex;
 		this.startX = e.clientX;
 
-		const rows = table.querySelectorAll('tr');
-		const firstCell = rows[0].children[columnIndex] as HTMLElement;
-		this.startWidth = firstCell.offsetWidth;
+		const headerCell = table.rows[0]?.cells[columnIndex];
+		this.startWidth = headerCell ? headerCell.getBoundingClientRect().width : this.settings.minColumnWidth;
 
-		// 添加拖拽样式
+		// Fixed layout makes the browser respect the exact widths we set.
+		table.style.tableLayout = 'fixed';
 		table.setAttribute('data-resizing', 'true');
 		document.body.classList.add('table-resizing');
 
@@ -114,164 +117,138 @@ export default class TableColumnResizerPlugin extends Plugin {
 		if (!this.isResizing || !this.currentTable) return;
 
 		const deltaX = e.clientX - this.startX;
-		let newWidth = this.startWidth + deltaX;
+		const newWidth = Math.max(
+			this.settings.minColumnWidth,
+			Math.min(this.startWidth + deltaX, this.settings.maxColumnWidth)
+		);
 
-		// 限制宽度范围
-		newWidth = Math.max(this.settings.minColumnWidth, 
-						Math.min(newWidth, this.settings.maxColumnWidth));
-
-		// 调整整列宽度
-		const rows = this.currentTable.querySelectorAll('tr');
-		rows.forEach(row => {
-			const cell = row.children[this.currentColumn] as HTMLElement;
-			if (cell && cell.style) {
-				cell.style.width = newWidth + 'px';
-				cell.style.minWidth = newWidth + 'px';
-				cell.style.maxWidth = newWidth + 'px';
-			}
-		});
-	}
+		this.setColumnWidth(this.currentTable, this.currentColumn, newWidth);
+	};
 
 	handleMouseUp = () => {
 		if (!this.isResizing) return;
-
 		this.isResizing = false;
+
 		document.removeEventListener('mousemove', this.handleMouseMove);
 		document.removeEventListener('mouseup', this.handleMouseUp);
-
-		// 移除样式
-		if (this.currentTable) {
-			this.currentTable.removeAttribute('data-resizing');
-			// 保存列宽设置
-			this.saveTableColumnWidths(this.currentTable);
-		}
 		document.body.classList.remove('table-resizing');
 
-		this.currentTable = null;
-		this.currentColumn = -1;
-	}
-
-	// 保存表格列宽设置
-	saveTableColumnWidths(table: HTMLElement) {
-		const tableId = this.getTableId(table);
-		const rows = table.querySelectorAll('tr');
-		if (rows.length === 0) return;
-
-		const columnWidths: { [key: number]: number } = {};
-		const firstRow = rows[0];
-		
-		for (let i = 0; i < firstRow.children.length; i++) {
-			const cell = firstRow.children[i] as HTMLElement;
-			if (cell.style.width) {
-				columnWidths[i] = parseInt(cell.style.width);
-			}
+		if (this.currentTable) {
+			this.currentTable.removeAttribute('data-resizing');
+			this.saveWidths(this.currentTable, this.currentSourcePath);
 		}
 
-		// 保存到插件数据
-		const savedData = this.loadDataSync();
-		savedData[tableId] = columnWidths;
-		this.saveData(savedData);
-	}
+		this.currentTable = null;
+		this.currentSourcePath = '';
+		this.currentColumn = -1;
+	};
 
-	// 恢复保存的列宽设置
-	applySavedColumnWidths(table: HTMLElement) {
-		const tableId = this.getTableId(table);
-		const savedData = this.loadDataSync();
-		const columnWidths = savedData[tableId];
-
-		if (!columnWidths) return;
-
-		Object.entries(columnWidths).forEach(([columnIndex, width]) => {
-			const rows = table.querySelectorAll('tr');
-			rows.forEach(row => {
-				const cell = row.children[parseInt(columnIndex)] as HTMLElement;
-				if (cell && cell.style) {
-					cell.style.width = width + 'px';
-					cell.style.minWidth = width + 'px';
-					cell.style.maxWidth = width + 'px';
-				}
-			});
+	setColumnWidth(table: HTMLTableElement, columnIndex: number, width: number) {
+		// row.cells is indexed by table column slot, so rows with a
+		// different number of cells (or spans) stay aligned correctly.
+		Array.from(table.rows).forEach((row) => {
+			const cell = row.cells[columnIndex];
+			if (cell) {
+				cell.style.width = `${width}px`;
+				cell.style.minWidth = `${width}px`;
+				cell.style.maxWidth = `${width}px`;
+			}
 		});
 	}
 
-	// 生成表格唯一ID
-	getTableId(table: HTMLElement): string {
-		// 基于表格内容和位置生成ID
-		const content = table.textContent || '';
-		const truncatedContent = content.substring(0, 50).replace(/\s/g, '');
-		const parent = table.parentElement;
-		const index = parent ? Array.from(parent.children).indexOf(table) : 0;
-		return `table_${truncatedContent}_${index}`;
+	saveWidths(table: HTMLTableElement, sourcePath: string) {
+		const tableId = this.getTableId(table, sourcePath);
+		const headerRow = table.rows[0];
+		if (!headerRow) return;
+
+		const widths: { [columnIndex: number]: number } = {};
+		Array.from(headerRow.cells).forEach((cell) => {
+			if (cell.style.width) {
+				widths[cell.cellIndex] = parseFloat(cell.style.width);
+			}
+		});
+
+		if (Object.keys(widths).length === 0) {
+			delete this.tableWidths[tableId];
+		} else {
+			this.tableWidths[tableId] = widths;
+		}
+
+		this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
 	}
 
-	loadDataSync(): any {
-		return this.loadData() || {};
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	/**
+	 * Stable id: source path + hash of the table's text content.
+	 * Widths survive restarts and edits elsewhere in the note; they reset
+	 * when the table's own content changes.
+	 */
+	getTableId(table: HTMLTableElement, sourcePath: string): string {
+		const content = table.textContent ?? '';
+		let hash = 5381;
+		for (let i = 0; i < content.length; i++) {
+			hash = ((hash << 5) + hash + content.charCodeAt(i)) >>> 0;
+		}
+		return `${sourcePath}::${hash.toString(36)}`;
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-
-	onunload() {
-		console.log('卸载表格列宽调整插件');
+		await this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
 	}
 }
 
 class TableColumnResizerSettingTab extends PluginSettingTab {
 	plugin: TableColumnResizerPlugin;
 
-	constructor(app: App, plugin: TableColumnResizerPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: '表格列宽调整设置' });
-
-		// 最小列宽设置
 		new Setting(containerEl)
-			.setName('最小列宽')
-			.setDesc('列的最小宽度（像素）')
-			.addSlider(slider => slider
-				.setLimits(30, 100, 10)
-				.setValue(this.plugin.settings.minColumnWidth)
-				.setDynamicTooltip()
-				.onChange(async (value) => {
-					this.plugin.settings.minColumnWidth = value;
+			.setName('Enable column resizing')
+			.setDesc('Drag column edges to resize tables in reading view.')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.enabled).onChange(async (value) => {
+					this.plugin.settings.enabled = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
-		// 最大列宽设置
 		new Setting(containerEl)
-			.setName('最大列宽')
-			.setDesc('列的最大宽度（像素）')
-			.addSlider(slider => slider
-				.setLimits(200, 800, 50)
-				.setValue(this.plugin.settings.maxColumnWidth)
-				.setDynamicTooltip()
-				.onChange(async (value) => {
-					this.plugin.settings.maxColumnWidth = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('Minimum column width')
+			.setDesc('Smallest allowed column width, in pixels.')
+			.addText((text) =>
+				text
+					.setValue(String(this.plugin.settings.minColumnWidth))
+					.onChange(async (value) => {
+						const parsed = parseInt(value, 10);
+						if (!Number.isNaN(parsed) && parsed > 0) {
+							this.plugin.settings.minColumnWidth = parsed;
+							if (this.plugin.settings.maxColumnWidth < parsed) {
+								this.plugin.settings.maxColumnWidth = parsed;
+							}
+							await this.plugin.saveSettings();
+							this.display();
+						}
+					})
+			);
 
-		// 默认列宽设置
 		new Setting(containerEl)
-			.setName('默认列宽')
-			.setDesc('新表格的默认列宽（像素）')
-			.addSlider(slider => slider
-				.setLimits(80, 300, 20)
-				.setValue(this.plugin.settings.defaultColumnWidth)
-				.setDynamicTooltip()
-				.onChange(async (value) => {
-					this.plugin.settings.defaultColumnWidth = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('Maximum column width')
+			.setDesc('Largest allowed column width, in pixels.')
+			.addText((text) =>
+				text
+					.setValue(String(this.plugin.settings.maxColumnWidth))
+					.onChange(async (value) => {
+						const parsed = parseInt(value, 10);
+						if (!Number.isNaN(parsed) && parsed > 0) {
+							this.plugin.settings.maxColumnWidth = parsed;
+							if (this.plugin.settings.minColumnWidth > parsed) {
+								this.plugin.settings.minColumnWidth = parsed;
+							}
+							await this.plugin.saveSettings();
+							this.display();
+						}
+					})
+			);
 	}
 }
