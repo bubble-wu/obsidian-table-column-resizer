@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, PluginSettingTab, Setting } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, PluginSettingTab, Setting, SettingDefinitionItem } from 'obsidian';
 
 interface PluginSettings {
 	enabled: boolean;
@@ -74,9 +74,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 		Array.from(headerRow.cells).forEach((cell) => {
 			if (cell.cellIndex === headerRow.cells.length - 1) return;
 
-			const handle = createEl('div', { cls: 'table-column-resizer' });
-			cell.appendChild(handle);
-
+			const handle = cell.createEl('div', { cls: 'table-column-resizer' });
 			handle.addEventListener('mousedown', (e) => {
 				e.preventDefault();
 				this.startResize(e, table, cell.cellIndex, sourcePath);
@@ -89,7 +87,8 @@ export default class TableColumnResizerPlugin extends Plugin {
 		if (!widths) return;
 
 		table.setCssStyles({ tableLayout: 'fixed' });
-		Object.entries(widths).forEach(([columnIndex, width]) => {
+		const entries = Object.entries(widths) as [string, number][];
+		entries.forEach(([columnIndex, width]) => {
 			this.setColumnWidth(table, Number.parseInt(columnIndex, 10), width);
 		});
 	}
@@ -125,7 +124,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 		this.setColumnWidth(this.currentTable, this.currentColumn, newWidth);
 	};
 
-	handleMouseUp = async () => {
+	handleMouseUp = () => {
 		if (!this.isResizing) return;
 		this.isResizing = false;
 
@@ -135,7 +134,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 
 		if (this.currentTable) {
 			this.currentTable.removeAttribute('data-resizing');
-			await this.saveWidths(this.currentTable, this.currentSourcePath);
+			void this.saveWidths(this.currentTable, this.currentSourcePath);
 		}
 
 		this.currentTable = null;
@@ -198,6 +197,63 @@ export default class TableColumnResizerPlugin extends Plugin {
 class TableColumnResizerSettingTab extends PluginSettingTab {
 	plugin: TableColumnResizerPlugin;
 
+	/** Declarative settings (Obsidian 1.13.0+): powers the settings search. */
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				name: 'Enable column resizing',
+				desc: 'Drag column edges to resize tables in reading view.',
+				control: {
+					type: 'toggle',
+					key: 'enabled',
+					defaultValue: DEFAULT_SETTINGS.enabled,
+				},
+			},
+			{
+				name: 'Minimum column width',
+				desc: 'Smallest allowed column width, in pixels.',
+				control: {
+					type: 'number',
+					key: 'minColumnWidth',
+					defaultValue: DEFAULT_SETTINGS.minColumnWidth,
+					validate: (value) => (value > 0 ? undefined : 'Must be a positive number.'),
+				},
+			},
+			{
+				name: 'Maximum column width',
+				desc: 'Largest allowed column width, in pixels.',
+				control: {
+					type: 'number',
+					key: 'maxColumnWidth',
+					defaultValue: DEFAULT_SETTINGS.maxColumnWidth,
+					validate: (value) => (value > 0 ? undefined : 'Must be a positive number.'),
+				},
+			},
+		];
+	}
+
+	getControlValue(key: string): unknown {
+		return this.plugin.settings[key as keyof PluginSettings];
+	}
+
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		switch (key) {
+			case 'enabled':
+				this.plugin.settings.enabled = Boolean(value);
+				break;
+			case 'minColumnWidth':
+				this.plugin.settings.minColumnWidth = Number(value);
+				break;
+			case 'maxColumnWidth':
+				this.plugin.settings.maxColumnWidth = Number(value);
+				break;
+			default:
+				return;
+		}
+		await this.plugin.saveSettings();
+	}
+
+	/** Legacy imperative settings UI for Obsidian versions before 1.13.0. */
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();

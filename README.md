@@ -3,7 +3,19 @@
 An Obsidian plugin that lets you resize Markdown table columns by dragging their edges — no code blocks, no migration. Your notes stay plain Markdown.
 
 **Author**: [bubble](https://github.com/bubble-wu)
-**Version**: 1.0.1
+
+## Why this plugin
+
+Your notes stay **standard Markdown pipe tables**. Nothing is embedded in your notes — no `table` code blocks, no hidden markup in the file, no lock-in. Disable the plugin any time and your tables are still perfectly valid Markdown, everywhere.
+
+| | Table Column Resizer | Better Tables | Advanced Tables |
+|---|---|---|---|
+| Works on standard Markdown tables | ✅ | ❌ requires a `table` code block | ✅ |
+| Drag to resize columns | ✅ | ✅ | ❌ |
+| Widths persist across restarts | ✅ | ✅ | — |
+| Notes stay portable plain Markdown | ✅ | widths stored in a hidden comment inside a code block | ✅ |
+
+[Advanced Tables](https://github.com/tgrosinger/advanced-tables-obsidian) is a great complement: it focuses on table editing and navigation, while this plugin handles visual column widths.
 
 ## Features
 
@@ -15,7 +27,9 @@ An Obsidian plugin that lets you resize Markdown table columns by dragging their
 
 ## Installation
 
-### From GitHub Releases (manual)
+Install from Obsidian: Settings → Community plugins → Browse, search for "Table Column Resizer".
+
+Or manually:
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/bubble-wu/obsidian-table-column-resizer/releases)
 2. Copy them into your vault: `.obsidian/plugins/table-column-resizer/`

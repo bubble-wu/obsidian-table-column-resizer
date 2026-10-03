@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.3] - 2026-10-04
+
+### Added
+- Declarative settings API (`getSettingDefinitions`) so plugin settings appear in Obsidian's built-in settings search (Obsidian 1.13.0+); the imperative settings UI is kept for older versions
+- README: comparison table with similar table plugins
+
+### Changed
+- Release workflow now runs `npm ci` and attests build provenance for release assets (GitHub artifact attestations)
+- Resize handle is created with Obsidian's `createEl` helper; the fire-and-forget persistence write after a drag is now explicitly marked as ignored
+
 ## [1.0.2] - 2026-10-04
 
 ### Fixed

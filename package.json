@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-table-column-resizer",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Drag to resize table columns in Obsidian reading view",
 	"main": "main.js",
 	"scripts": {

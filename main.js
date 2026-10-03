@@ -53,7 +53,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
       );
       this.setColumnWidth(this.currentTable, this.currentColumn, newWidth);
     };
-    this.handleMouseUp = async () => {
+    this.handleMouseUp = () => {
       if (!this.isResizing)
         return;
       this.isResizing = false;
@@ -62,7 +62,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
       document.body.classList.remove("table-resizing");
       if (this.currentTable) {
         this.currentTable.removeAttribute("data-resizing");
-        await this.saveWidths(this.currentTable, this.currentSourcePath);
+        void this.saveWidths(this.currentTable, this.currentSourcePath);
       }
       this.currentTable = null;
       this.currentSourcePath = "";
@@ -103,8 +103,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     Array.from(headerRow.cells).forEach((cell) => {
       if (cell.cellIndex === headerRow.cells.length - 1)
         return;
-      const handle = createEl("div", { cls: "table-column-resizer" });
-      cell.appendChild(handle);
+      const handle = cell.createEl("div", { cls: "table-column-resizer" });
       handle.addEventListener("mousedown", (e) => {
         e.preventDefault();
         this.startResize(e, table, cell.cellIndex, sourcePath);
@@ -116,7 +115,8 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     if (!widths)
       return;
     table.setCssStyles({ tableLayout: "fixed" });
-    Object.entries(widths).forEach(([columnIndex, width]) => {
+    const entries = Object.entries(widths);
+    entries.forEach(([columnIndex, width]) => {
       this.setColumnWidth(table, Number.parseInt(columnIndex, 10), width);
     });
   }
@@ -181,6 +181,60 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
   }
 };
 var TableColumnResizerSettingTab = class extends import_obsidian.PluginSettingTab {
+  /** Declarative settings (Obsidian 1.13.0+): powers the settings search. */
+  getSettingDefinitions() {
+    return [
+      {
+        name: "Enable column resizing",
+        desc: "Drag column edges to resize tables in reading view.",
+        control: {
+          type: "toggle",
+          key: "enabled",
+          defaultValue: DEFAULT_SETTINGS.enabled
+        }
+      },
+      {
+        name: "Minimum column width",
+        desc: "Smallest allowed column width, in pixels.",
+        control: {
+          type: "number",
+          key: "minColumnWidth",
+          defaultValue: DEFAULT_SETTINGS.minColumnWidth,
+          validate: (value) => value > 0 ? void 0 : "Must be a positive number."
+        }
+      },
+      {
+        name: "Maximum column width",
+        desc: "Largest allowed column width, in pixels.",
+        control: {
+          type: "number",
+          key: "maxColumnWidth",
+          defaultValue: DEFAULT_SETTINGS.maxColumnWidth,
+          validate: (value) => value > 0 ? void 0 : "Must be a positive number."
+        }
+      }
+    ];
+  }
+  getControlValue(key) {
+    return this.plugin.settings[key];
+  }
+  async setControlValue(key, value) {
+    switch (key) {
+      case "enabled":
+        this.plugin.settings.enabled = Boolean(value);
+        break;
+      case "minColumnWidth":
+        this.plugin.settings.minColumnWidth = Number(value);
+        break;
+      case "maxColumnWidth":
+        this.plugin.settings.maxColumnWidth = Number(value);
+        break;
+      default:
+        return;
+    }
+    await this.plugin.saveSettings();
+  }
+  /** Legacy imperative settings UI for Obsidian versions before 1.13.0. */
   display() {
     const { containerEl } = this;
     containerEl.empty();
