@@ -33,10 +33,16 @@ table[data-resizable] th:hover .table-column-resizer,
 
 /* While dragging: keep the resize cursor everywhere and avoid selecting text. */
 body.table-resizing,
-body.table-resizing * {
-	cursor: col-resize !important;
-	user-select: none !important;
-	-webkit-user-select: none !important;
+body.table-resizing body,
+body.table-resizing div,
+body.table-resizing span,
+body.table-resizing p,
+body.table-resizing table,
+body.table-resizing th,
+body.table-resizing td {
+	cursor: col-resize;
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 /* Highlight the table being resized. */

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.2] - 2026-10-04
+
+### Fixed
+- Replace direct style assignments with Obsidian's `setCssStyles` to satisfy the community plugin guidelines
+- Type-safe loading of persisted plugin data
+- Await persistence writes instead of leaving a floating promise
+- Use Obsidian's `createEl` helper instead of `document.createElement`
+- Remove `!important` from drag-state styles
+- Add `package-lock.json` for reproducible builds; drop the `builtin-modules` dependency
+
 ## [1.0.1] - 2026-10-03
 
 ### Fixed

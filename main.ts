@@ -34,7 +34,8 @@ export default class TableColumnResizerPlugin extends Plugin {
 	private startWidth = 0;
 
 	async onload() {
-		const data: PluginData = (await this.loadData()) ?? {};
+		const raw: unknown = await this.loadData();
+		const data = (raw ?? {}) as PluginData;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings ?? {});
 		this.tableWidths = data.tableWidths ?? {};
 
@@ -54,8 +55,8 @@ export default class TableColumnResizerPlugin extends Plugin {
 
 	processTables(element: HTMLElement, context: MarkdownPostProcessorContext) {
 		if (!this.settings.enabled) return;
-		element.querySelectorAll('table').forEach((table) => {
-			this.makeTableResizable(table as HTMLTableElement, context.sourcePath);
+		element.querySelectorAll<HTMLTableElement>('table').forEach((table) => {
+			this.makeTableResizable(table, context.sourcePath);
 		});
 	}
 
@@ -73,8 +74,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 		Array.from(headerRow.cells).forEach((cell) => {
 			if (cell.cellIndex === headerRow.cells.length - 1) return;
 
-			const handle = document.createElement('div');
-			handle.className = 'table-column-resizer';
+			const handle = createEl('div', { cls: 'table-column-resizer' });
 			cell.appendChild(handle);
 
 			handle.addEventListener('mousedown', (e) => {
@@ -88,9 +88,9 @@ export default class TableColumnResizerPlugin extends Plugin {
 		const widths = this.tableWidths[this.getTableId(table, sourcePath)];
 		if (!widths) return;
 
-		table.style.tableLayout = 'fixed';
+		table.setCssStyles({ tableLayout: 'fixed' });
 		Object.entries(widths).forEach(([columnIndex, width]) => {
-			this.setColumnWidth(table, parseInt(columnIndex, 10), width);
+			this.setColumnWidth(table, Number.parseInt(columnIndex, 10), width);
 		});
 	}
 
@@ -105,7 +105,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 		this.startWidth = headerCell ? headerCell.getBoundingClientRect().width : this.settings.minColumnWidth;
 
 		// Fixed layout makes the browser respect the exact widths we set.
-		table.style.tableLayout = 'fixed';
+		table.setCssStyles({ tableLayout: 'fixed' });
 		table.setAttribute('data-resizing', 'true');
 		document.body.classList.add('table-resizing');
 
@@ -125,7 +125,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 		this.setColumnWidth(this.currentTable, this.currentColumn, newWidth);
 	};
 
-	handleMouseUp = () => {
+	handleMouseUp = async () => {
 		if (!this.isResizing) return;
 		this.isResizing = false;
 
@@ -135,7 +135,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 
 		if (this.currentTable) {
 			this.currentTable.removeAttribute('data-resizing');
-			this.saveWidths(this.currentTable, this.currentSourcePath);
+			await this.saveWidths(this.currentTable, this.currentSourcePath);
 		}
 
 		this.currentTable = null;
@@ -144,19 +144,18 @@ export default class TableColumnResizerPlugin extends Plugin {
 	};
 
 	setColumnWidth(table: HTMLTableElement, columnIndex: number, width: number) {
+		const px = `${width}px`;
 		// row.cells is indexed by table column slot, so rows with a
 		// different number of cells (or spans) stay aligned correctly.
 		Array.from(table.rows).forEach((row) => {
 			const cell = row.cells[columnIndex];
 			if (cell) {
-				cell.style.width = `${width}px`;
-				cell.style.minWidth = `${width}px`;
-				cell.style.maxWidth = `${width}px`;
+				cell.setCssStyles({ width: px, minWidth: px, maxWidth: px });
 			}
 		});
 	}
 
-	saveWidths(table: HTMLTableElement, sourcePath: string) {
+	async saveWidths(table: HTMLTableElement, sourcePath: string) {
 		const tableId = this.getTableId(table, sourcePath);
 		const headerRow = table.rows[0];
 		if (!headerRow) return;
@@ -164,7 +163,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 		const widths: { [columnIndex: number]: number } = {};
 		Array.from(headerRow.cells).forEach((cell) => {
 			if (cell.style.width) {
-				widths[cell.cellIndex] = parseFloat(cell.style.width);
+				widths[cell.cellIndex] = Number.parseFloat(cell.style.width);
 			}
 		});
 
@@ -174,7 +173,7 @@ export default class TableColumnResizerPlugin extends Plugin {
 			this.tableWidths[tableId] = widths;
 		}
 
-		this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
+		await this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
 	}
 
 	/**
@@ -220,7 +219,7 @@ class TableColumnResizerSettingTab extends PluginSettingTab {
 				text
 					.setValue(String(this.plugin.settings.minColumnWidth))
 					.onChange(async (value) => {
-						const parsed = parseInt(value, 10);
+						const parsed = Number.parseInt(value, 10);
 						if (!Number.isNaN(parsed) && parsed > 0) {
 							this.plugin.settings.minColumnWidth = parsed;
 							if (this.plugin.settings.maxColumnWidth < parsed) {
@@ -239,7 +238,7 @@ class TableColumnResizerSettingTab extends PluginSettingTab {
 				text
 					.setValue(String(this.plugin.settings.maxColumnWidth))
 					.onChange(async (value) => {
-						const parsed = parseInt(value, 10);
+						const parsed = Number.parseInt(value, 10);
 						if (!Number.isNaN(parsed) && parsed > 0) {
 							this.plugin.settings.maxColumnWidth = parsed;
 							if (this.plugin.settings.minColumnWidth > parsed) {

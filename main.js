@@ -53,7 +53,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
       );
       this.setColumnWidth(this.currentTable, this.currentColumn, newWidth);
     };
-    this.handleMouseUp = () => {
+    this.handleMouseUp = async () => {
       if (!this.isResizing)
         return;
       this.isResizing = false;
@@ -62,7 +62,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
       document.body.classList.remove("table-resizing");
       if (this.currentTable) {
         this.currentTable.removeAttribute("data-resizing");
-        this.saveWidths(this.currentTable, this.currentSourcePath);
+        await this.saveWidths(this.currentTable, this.currentSourcePath);
       }
       this.currentTable = null;
       this.currentSourcePath = "";
@@ -70,10 +70,11 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     };
   }
   async onload() {
-    var _a, _b, _c;
-    const data = (_a = await this.loadData()) != null ? _a : {};
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, (_b = data.settings) != null ? _b : {});
-    this.tableWidths = (_c = data.tableWidths) != null ? _c : {};
+    var _a, _b;
+    const raw = await this.loadData();
+    const data = raw != null ? raw : {};
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, (_a = data.settings) != null ? _a : {});
+    this.tableWidths = (_b = data.tableWidths) != null ? _b : {};
     this.registerMarkdownPostProcessor((element, context) => {
       this.processTables(element, context);
     });
@@ -102,8 +103,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     Array.from(headerRow.cells).forEach((cell) => {
       if (cell.cellIndex === headerRow.cells.length - 1)
         return;
-      const handle = document.createElement("div");
-      handle.className = "table-column-resizer";
+      const handle = createEl("div", { cls: "table-column-resizer" });
       cell.appendChild(handle);
       handle.addEventListener("mousedown", (e) => {
         e.preventDefault();
@@ -115,9 +115,9 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     const widths = this.tableWidths[this.getTableId(table, sourcePath)];
     if (!widths)
       return;
-    table.style.tableLayout = "fixed";
+    table.setCssStyles({ tableLayout: "fixed" });
     Object.entries(widths).forEach(([columnIndex, width]) => {
-      this.setColumnWidth(table, parseInt(columnIndex, 10), width);
+      this.setColumnWidth(table, Number.parseInt(columnIndex, 10), width);
     });
   }
   startResize(e, table, columnIndex, sourcePath) {
@@ -129,23 +129,22 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     this.startX = e.clientX;
     const headerCell = (_a = table.rows[0]) == null ? void 0 : _a.cells[columnIndex];
     this.startWidth = headerCell ? headerCell.getBoundingClientRect().width : this.settings.minColumnWidth;
-    table.style.tableLayout = "fixed";
+    table.setCssStyles({ tableLayout: "fixed" });
     table.setAttribute("data-resizing", "true");
     document.body.classList.add("table-resizing");
     document.addEventListener("mousemove", this.handleMouseMove);
     document.addEventListener("mouseup", this.handleMouseUp);
   }
   setColumnWidth(table, columnIndex, width) {
+    const px = `${width}px`;
     Array.from(table.rows).forEach((row) => {
       const cell = row.cells[columnIndex];
       if (cell) {
-        cell.style.width = `${width}px`;
-        cell.style.minWidth = `${width}px`;
-        cell.style.maxWidth = `${width}px`;
+        cell.setCssStyles({ width: px, minWidth: px, maxWidth: px });
       }
     });
   }
-  saveWidths(table, sourcePath) {
+  async saveWidths(table, sourcePath) {
     const tableId = this.getTableId(table, sourcePath);
     const headerRow = table.rows[0];
     if (!headerRow)
@@ -153,7 +152,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     const widths = {};
     Array.from(headerRow.cells).forEach((cell) => {
       if (cell.style.width) {
-        widths[cell.cellIndex] = parseFloat(cell.style.width);
+        widths[cell.cellIndex] = Number.parseFloat(cell.style.width);
       }
     });
     if (Object.keys(widths).length === 0) {
@@ -161,7 +160,7 @@ var TableColumnResizerPlugin = class extends import_obsidian.Plugin {
     } else {
       this.tableWidths[tableId] = widths;
     }
-    this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
+    await this.saveData({ settings: this.settings, tableWidths: this.tableWidths });
   }
   /**
    * Stable id: source path + hash of the table's text content.
@@ -193,7 +192,7 @@ var TableColumnResizerSettingTab = class extends import_obsidian.PluginSettingTa
     );
     new import_obsidian.Setting(containerEl).setName("Minimum column width").setDesc("Smallest allowed column width, in pixels.").addText(
       (text) => text.setValue(String(this.plugin.settings.minColumnWidth)).onChange(async (value) => {
-        const parsed = parseInt(value, 10);
+        const parsed = Number.parseInt(value, 10);
         if (!Number.isNaN(parsed) && parsed > 0) {
           this.plugin.settings.minColumnWidth = parsed;
           if (this.plugin.settings.maxColumnWidth < parsed) {
@@ -206,7 +205,7 @@ var TableColumnResizerSettingTab = class extends import_obsidian.PluginSettingTa
     );
     new import_obsidian.Setting(containerEl).setName("Maximum column width").setDesc("Largest allowed column width, in pixels.").addText(
       (text) => text.setValue(String(this.plugin.settings.maxColumnWidth)).onChange(async (value) => {
-        const parsed = parseInt(value, 10);
+        const parsed = Number.parseInt(value, 10);
         if (!Number.isNaN(parsed) && parsed > 0) {
           this.plugin.settings.maxColumnWidth = parsed;
           if (this.plugin.settings.minColumnWidth > parsed) {
