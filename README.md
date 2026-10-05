@@ -2,6 +2,8 @@
 
 An Obsidian plugin that lets you resize Markdown table columns by dragging their edges — no code blocks, no migration. Your notes stay plain Markdown.
 
+![Drag to resize table columns in reading view](screenshots/demo.gif)
+
 **Author**: [bubble](https://github.com/bubble-wu)
 
 ## Why this plugin
