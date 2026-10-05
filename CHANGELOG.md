@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0] - 2026-10-05
+
+### Added
+- Touch and stylus support: drag handling switched from mouse events to Pointer Events, with pointer capture so tracking continues when the pointer leaves the window and `touch-action: none` on the handle so touch drags are not hijacked by scrolling
+- Saved widths for notes that no longer exist are pruned on plugin load, and at most 100 tables per note are remembered, so `data.json` no longer grows without limit
+- Disabling the plugin in settings now removes existing resize handles immediately instead of waiting for the next render
+
+### Fixed
+- Drag state (document listeners, drag cursor, text selection) is now fully cleaned up when a drag is cancelled (`pointercancel`), not only when it ends
+- `setCssStyles` is now feature-detected with a direct style-assignment fallback, so the declared `minAppVersion: 0.15.0` is accurate on app versions that predate the helper
+
+### Changed
+- `versions.json` now uses the official flat format (`plugin version → minimum app version`); the previous nested form was ignored by the updater, which fell back to the manifest value
+
 ## [1.0.3] - 2026-10-04
 
 ### Added

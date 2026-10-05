@@ -17,6 +17,8 @@
 		var(--interactive-accent) 50%,
 		transparent 100%
 	);
+	/* Required for touch dragging: keeps the browser from claiming the gesture for scrolling. */
+	touch-action: none;
 }
 
 /* The header cell hosting a handle needs a positioning context. */
@@ -33,7 +35,6 @@ table[data-resizable] th:hover .table-column-resizer,
 
 /* While dragging: keep the resize cursor everywhere and avoid selecting text. */
 body.table-resizing,
-body.table-resizing body,
 body.table-resizing div,
 body.table-resizing span,
 body.table-resizing p,

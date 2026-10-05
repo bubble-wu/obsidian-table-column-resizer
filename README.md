@@ -20,6 +20,7 @@ Your notes stay **standard Markdown pipe tables**. Nothing is embedded in your n
 ## Features
 
 - **Drag to resize**: grab a column edge in the header row and drag
+- **Mouse & touch**: pointer-event based, works with mouse, touch and stylus
 - **Persistent**: widths are saved per table and restored across restarts
 - **Reading view**: works in reading view (Live Preview support is planned)
 - **Customizable limits**: set any minimum and maximum column width
