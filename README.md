@@ -50,14 +50,12 @@ npm run build   # outputs main.js
 ## Usage
 
 1. Add a Markdown table to a note:
-
    ```markdown
    | Name | Age | City | Description |
    |------|-----|------|-------------|
    | John | 25  | NYC  | Software developer |
    | Jane | 30  | LA   | Product manager |
    ```
-
 2. Switch to reading view (`Cmd/Ctrl + E`)
 3. Hover a header cell — a vertical handle appears on its right edge. Drag it to resize the column.
 4. Widths are saved when you release the mouse, and restored the next time the table is rendered.
