@@ -72,3 +72,7 @@ jobs:
             main.js
             manifest.json
             styles.css
+          body: |
+            See [CHANGELOG.md](https://github.com/bubble-wu/obsidian-table-column-resizer/blob/main/CHANGELOG.md) for the full notes for this release.
+
+            **Install**: download `main.js`, `manifest.json` and `styles.css` below into `.obsidian/plugins/table-column-resizer/`, or install from the [official directory](https://obsidian.md/plugins?id=table-column-resizer) for automatic updates.
