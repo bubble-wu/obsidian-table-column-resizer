@@ -30,13 +30,15 @@ Your notes stay **standard Markdown pipe tables**. Nothing is embedded in your n
 
 ## Installation
 
-Install from the official directory (recommended, gets automatic updates): open <https://obsidian.md/plugins?id=table-column-resizer> and click **Open in Obsidian**, or in Obsidian go to Settings → Community plugins → Browse and search for "Table Column Resizer".
+Install from the official directory (recommended): open <https://obsidian.md/plugins?id=table-column-resizer> and click **Open in Obsidian**, or in Obsidian go to Settings → Community plugins → Browse and search for "Table Column Resizer".
+
+To update a directory-installed plugin, go to Settings → Community plugins → Current plugins and click **Check for updates**. If an update is available, click **Update** next to Table Column Resizer, or **Update all** to update all plugins.
 
 Or manually:
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/bubble-wu/obsidian-table-column-resizer/releases)
+1. Download the `main.js`, `manifest.json`, and `styles.css` assets from the [latest release](https://github.com/bubble-wu/obsidian-table-column-resizer/releases/latest). The **Source code (zip)** and **Source code (tar.gz)** archives are not the built plugin.
 2. Copy them into your vault: `.obsidian/plugins/table-column-resizer/`
-3. Enable the plugin in Settings → Community plugins
+3. Reload Obsidian, then enable the plugin in Settings → Community plugins
 
 ### Development
 
@@ -57,8 +59,8 @@ npm run build   # outputs main.js
    | Jane | 30  | LA   | Product manager |
    ```
 2. Switch to reading view (`Cmd/Ctrl + E`)
-3. Hover a header cell — a vertical handle appears on its right edge. Drag it to resize the column.
-4. Widths are saved when you release the mouse, and restored the next time the table is rendered.
+3. Drag the right edge of a header cell (except the last column) to resize that column. With a mouse, hover over the header cell to reveal the handle; with touch or a stylus, press and drag the same edge.
+4. Widths are saved when you finish dragging, and restored the next time the table is rendered.
 
 ## Settings
 
@@ -73,8 +75,8 @@ Widths are keyed by note path + table content: they survive restarts and edits e
 ## Known limitations
 
 - Reading view only — Live Preview is not supported yet (planned)
-- Mouse-driven; touch dragging is not supported
-- Two byte-identical tables in the same note share their saved widths
+- The last column has no resize handle and cannot be resized directly
+- Tables with identical rendered text content in the same note share their saved widths
 
 ## License
 
