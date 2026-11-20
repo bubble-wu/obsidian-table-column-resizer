@@ -32,7 +32,7 @@ Your notes stay **standard Markdown pipe tables**. Nothing is embedded in your n
 
 Install from the official directory (recommended): open <https://obsidian.md/plugins?id=table-column-resizer> and click **Open in Obsidian**, or in Obsidian go to Settings → Community plugins → Browse and search for "Table Column Resizer".
 
-To update a directory-installed plugin, go to Settings → Community plugins → Check for updates.
+To update a directory-installed plugin, go to Settings → Community plugins → Current plugins and click **Check for updates**. If an update is available, click **Update** next to Table Column Resizer, or **Update all** to update all plugins.
 
 Or manually:
 
